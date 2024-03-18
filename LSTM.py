@@ -1,3 +1,27 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
+from prometheus_api_client import PrometheusConnect
+from math import sqrt
+import datetime
+
+PROMETHEUS_URL = "http://localhost:9090"
+PROMETHEUS_ACCESS_TOKEN = ""
+
+# Initialize Prometheus connection
+prom = PrometheusConnect(url=PROMETHEUS_URL, disable_ssl=True)
+
+# Queries
+ram_query = '100 - ((avg_over_time(node_memory_MemAvailable_bytes{instance="172.16.101.106:9100",job="kubernetes-service-endpoints"}[5m15s]) * 100) / avg_over_time(node_memory_MemTotal_bytes{instance="172.16.101.106:9100",job="kubernetes-service-endpoints"}[5m15s]))'
+cpu_query = '(sum by(instance) (irate(node_cpu_seconds_total{instance="172.16.101.106:9100",job="kubernetes-service-endpoints", mode!="idle"}[5m15s])) / on(instance) group_left sum by (instance)((irate(node_cpu_seconds_total{instance="172.16.101.106:9100",job="kubernetes-service-endpoints"}[5m15s])))) * 100'
+
+
 def predict(
     prom,
     query,
@@ -123,3 +147,7 @@ def predict(
         plt.show()
     else:
         print("No data returned from Prometheus or unexpected data format.")
+
+
+predict(prom, cpu_query, name="CPU Busy", patience=50)
+predict(prom, ram_query, name="RAM Usage", patience=50)
