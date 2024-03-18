@@ -8,6 +8,7 @@ def predict(
     epochs=1000,
     batch_size=1,
     patience=10,
+    degree=0.0005,
 ):
     end_time = datetime.datetime.now()
     start_time = end_time - datetime.timedelta(days=start_days_ago)
@@ -28,7 +29,7 @@ def predict(
 
         # Normalize the dataset
         scaler = MinMaxScaler(feature_range=(0, 1))
-        scaled_cpu_usage = scaler.fit_transform(df[name].values.reshape(-1, 1))
+        scaled_data = scaler.fit_transform(df[name].values.reshape(-1, 1))
 
         # Convert an array of values into a dataset matrix
         def create_dataset(dataset, look_back=3):
@@ -39,11 +40,11 @@ def predict(
                 dataY.append(dataset[i + look_back, 0])
             return np.array(dataX), np.array(dataY)
 
-        train_size = int(len(scaled_cpu_usage) * 0.67)
-        test_size = len(scaled_cpu_usage) - train_size
+        train_size = int(len(scaled_data) * 0.67)
+        test_size = len(scaled_data) - train_size
         train, test = (
-            scaled_cpu_usage[0:train_size, :],
-            scaled_cpu_usage[train_size : len(scaled_cpu_usage), :],
+            scaled_data[0:train_size, :],
+            scaled_data[train_size : len(scaled_data), :],
         )
 
         trainX, trainY = create_dataset(train, look_back)
@@ -59,7 +60,7 @@ def predict(
         model.add(LSTM(25, return_sequences=False))
         model.add(Dropout(0.2))
         model.add(Dense(1))
-        model.compile(loss="mean_squared_error", optimizer=Adam(0.0005))
+        model.compile(loss="mean_squared_error", optimizer=Adam(degree))
 
         # Fit the model with early stopping
         early_stop = EarlyStopping(monitor="val_loss", patience=patience, verbose=1)
